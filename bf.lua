@@ -34,21 +34,21 @@ function brainfuck_parse(code)
     local c = code:sub(i, i)
 
     if c == "+" then
-      table.insert(parsed_code, {INC})
+      table.insert(parsed_code, INC)
     elseif c == "-" then
-      table.insert(parsed_code, {DEC})
+      table.insert(parsed_code, DEC)
     elseif c == ">" then
-      table.insert(parsed_code, {RIGHT})
+      table.insert(parsed_code, RIGHT)
     elseif c == "<" then
-      table.insert(parsed_code, {LEFT})
+      table.insert(parsed_code, LEFT)
     elseif c == "." then
-      table.insert(parsed_code, {OUTPUT})
+      table.insert(parsed_code, OUTPUT)
     elseif c == "," then
-      table.insert(parsed_code, {INPUT})
+      table.insert(parsed_code, INPUT)
     elseif c == "[" then
-      table.insert(parsed_code, {OPENLOOP})
+      table.insert(parsed_code, OPENLOOP)
     elseif c == "]" then
-      table.insert(parsed_code, {CLOSELOOP})
+      table.insert(parsed_code, CLOSELOOP)
     end
   end
 
@@ -61,23 +61,24 @@ function brainfuck_eval(program)
   local ptr = tp.pointer
   local stack = {}
   local pc = 1
-  local output = ""
 
   while pc <= #program do
-    local cmd = program[pc][1]
+    local cmd = program[pc]
 
     if cmd == RIGHT then
       ptr = ptr + 1
     elseif cmd == LEFT then
       ptr = ptr - 1
     elseif cmd == INC then
-      memory[ptr] = (memory[ptr] + 1) % 256
-      --print(memory[ptr])
+      if memory[ptr] > 256 then
+        print("Cell overflow.")
+        os.exit(1)
+      end
+      memory[ptr] = (memory[ptr] + 1)
     elseif cmd == DEC then
-      memory[ptr] = (memory[ptr] - 1) % 256
-      --print(memory[ptr])
+      memory[ptr] = (memory[ptr] - 1)
     elseif cmd == OUTPUT then
-      output = output .. string.char(memory[ptr])
+      io.write(string.char(memory[ptr]))
     elseif cmd == OPENLOOP then
       if memory[ptr] == 0 then
         local open_brackets = 0 -- in total we have currently 1, but somehow with the number 1 as initial it doesn't works
@@ -99,19 +100,25 @@ function brainfuck_eval(program)
         table.remove(stack)
       end
     elseif cmd == INPUT then
-      local val = io.read("n")
-      memory[ptr] = tonumber(val)
+      memory[ptr] = tonumber(io.read(1))
+      if memory[ptr] >= 256 then
+        print("Cell overflow.")
+        os.exit(1)
+      end
     end
 
     pc = pc + 1
   end
-  return output
 end
 
-local file = io.open(arg[1], "r")
-if file then
-  local txt = file:read("a")
-  local program = brainfuck_parse(txt)
+assert(#arg > 0, "Expected input file.")
 
-  io.write(brainfuck_eval(program))
+for i=1, #arg do
+  local file = io.open(arg[i], "r")
+  if file then
+    local txt = file:read("a")
+    local program = brainfuck_parse(txt)
+    brainfuck_eval(program)
+    file:close()
+  end
 end
